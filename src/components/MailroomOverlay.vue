@@ -1,28 +1,16 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { OP } from '@/game/levelConfigs'
 
 const props = defineProps({
   api: {
     type: Object,
     required: true,
   },
-  availableOps: {
-    type: Array,
-    default: null,
+  config: {
+    type: Object,
+    required: true,
   },
-  title: {
-    type: String,
-    default: '收发室',
-  },
-})
-
-const availableOps = computed(() => {
-  if (props.availableOps && props.availableOps.length > 0) return props.availableOps
-  if (props.api.availableOps && props.api.availableOps.length > 0) return props.api.availableOps
-  return [
-    { op: props.api.OP.INBOX, title: 'INBOX', desc: '取原料（从输入传送带拿一个）' },
-    { op: props.api.OP.OUTBOX, title: 'OUTBOX', desc: '放成品（把手里的原料放到输出带）' },
-  ]
 })
 
 const steps = ref([])
@@ -53,20 +41,20 @@ function readDroppedOp(e) {
     e.dataTransfer?.getData('application/x-bakery-op') ||
     e.dataTransfer?.getData('text/plain') ||
     ''
-  return op?.toUpperCase?.() ?? ''
+  return op ?? ''
 }
 
 function onDropToProgram(e) {
   if (state.value.status !== 'idle') return
   const op = readDroppedOp(e)
-  if (op === props.api.OP.INBOX || op === props.api.OP.OUTBOX) {
-    steps.value = [...steps.value, { id: nextStepId++, op }]
+  if (op === OP.INBOX.title || op === OP.OUTBOX.title) {
+    steps.value = [...steps.value, { id: nextStepId++, title: op }]
   }
 }
 
-function addByClick(op) {
+function addByClick(title) {
   if (state.value.status !== 'idle') return
-  steps.value = [...steps.value, { id: nextStepId++, op }]
+  steps.value = [...steps.value, { id: nextStepId++, title }]
 }
 
 function removeStep(stepId) {
@@ -79,7 +67,7 @@ function clearProgram() {
   steps.value = []
 }
 
-const programOps = computed(() => steps.value.map((s) => s.op))
+const programOps = computed(() => steps.value.map((s) => s.title))
 
 function play() {
   if (state.value.status !== 'idle') return
@@ -96,14 +84,11 @@ function reset() {
   <div class="overlay">
     <div class="overlay__panel">
       <div class="panel__header">
-        {{ title }}
+        {{ config.levelName }}
       </div>
       <div class="panel__body">
-        <div class="panel__tip">
-          将命令拖动到此区域来编写程序。
-        </div>
         <div class="panel__mission">
-          目标：把输入传送带上的所有原料搬到输出传送带。
+          {{ config.levelDesc }}
         </div>
 
         <div class="panel__palette">
@@ -112,17 +97,17 @@ function reset() {
           </div>
           <div class="palette__list">
             <button
-              v-for="card in availableOps"
-              :key="card.op"
+              v-for="card in config.availableOps"
+              :key="card.title"
               class="palette__item"
               type="button"
               draggable="true"
               :disabled="state.status !== 'idle'"
-              @dragstart="(e) => onDragStartCard(e, card.op)"
-              @click="addByClick(card.op)"
+              @dragstart="(e) => onDragStartCard(e, card.title)"
+              @click="addByClick(card.title)"
             >
               <div class="cmd-card">
-                {{ card.op.toLowerCase() }}
+                {{ card.title }}
               </div>
               <div class="palette__desc">
                 {{ card.desc }}
@@ -137,7 +122,7 @@ function reset() {
           @drop.prevent="onDropToProgram"
         >
           <div v-if="steps.length === 0" class="program__empty">
-            把 INBOX / OUTBOX 拖进来
+            把指令卡片拖进来
           </div>
           <div v-else class="program__list">
             <div
@@ -153,7 +138,7 @@ function reset() {
               </div>
               <div class="row__cmd">
                 <div class="cmd-card">
-                  {{ step.op.toLowerCase() }}
+                  {{ step.title }}
                 </div>
               </div>
               <button
@@ -233,16 +218,6 @@ function reset() {
       display: flex;
       flex-direction: column;
       gap: 0.9rem;
-
-      .panel__tip {
-        background-color: rgba(255, 255, 255, 0.7);
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 12px;
-        padding: 0.75rem 0.85rem;
-        color: rgba(40, 20, 8, 0.78);
-        font-weight: 700;
-        line-height: 1.35;
-      }
 
       .panel__mission {
         background-color: rgba(255, 255, 255, 0.55);

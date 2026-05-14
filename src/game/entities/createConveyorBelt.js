@@ -57,7 +57,7 @@ export function createConveyorBelt(options) {
 
   function createItemGfx(item) {
     const gfx = new Graphics()
-    gfx.roundRect(-0.18, -0.18, 0.36, 0.36, 0.08).fill({ color: item.color ?? 0xffffff, alpha: 1 })
+    gfx.roundRect(-0.18, -0.18, 0.36, 0.36).fill({ color: item.color ?? 0xffffff, alpha: 1 })
     return gfx
   }
 

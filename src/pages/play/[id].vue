@@ -2,41 +2,33 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createGameApp } from '~/game/runtime/createGameApp'
-import { createLevel1Scene } from '~/game/scenes/level1/createLevel1Scene'
-import { createLevel2Scene } from '~/game/scenes/level2/createLevel2Scene'
+import { createMailroomScene } from '~/game/scenes/createMailroomScene'
+import { getLevelConfigsById } from '~/game/levelConfigs'
 import MailroomOverlay from '~/components/MailroomOverlay.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const levelId = computed(() => `${route.params.id ?? ''}`)
-const levelNumber = computed(() => parseInt(levelId.value, 10))
-const levelTitle = computed(() => {
-  if (levelNumber.value === 1) return '收发室'
-  if (levelNumber.value === 2) return '繁忙的收发室'
-  return '关卡'
-})
+const levelId = computed(() => +route.params.id)
 
 const containerRef = ref(null)
 const overlayApiRef = ref(null)
+const levelConfig = ref(null)
 let app = null
 let off = null
 
-function getSceneFactory() {
-  if (levelNumber.value === 1) return createLevel1Scene
-  if (levelNumber.value === 2) return createLevel2Scene
-  return null
-}
+const createSceneTemp = (ctx) => createMailroomScene(ctx, levelId.value)
 
 onMounted(() => {
-  const factory = getSceneFactory()
+  const factory = createSceneTemp
   if (!containerRef.value || !factory) return
   Promise.resolve(createGameApp(containerRef.value, factory)).then((created) => {
     app = created
     overlayApiRef.value = app.sceneCtl.api
+    levelConfig.value = getLevelConfigsById(levelId.value)
     off = overlayApiRef.value.onStateChange((s) => {
       if (s.status !== 'finished' || s.result !== 'success') return
-      const current = levelNumber.value
+      const current = levelId.value
       if (!Number.isFinite(current)) return
       const nextUnlocked = Math.min(2, current + 1)
       const saved = localStorage.getItem('bakery-max-level')
@@ -68,7 +60,7 @@ const goBack = () => {
         v-if="overlayApiRef"
         class="play__panel"
         :api="overlayApiRef"
-        :title="levelTitle"
+        :config="levelConfig"
       />
     </div>
     <button class="play__back" type="button" @click="goBack">

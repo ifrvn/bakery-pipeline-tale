@@ -1,13 +1,11 @@
-import { Container, Graphics, Text } from 'pixi.js'
-import { createConveyorBelt } from '../../entities/createConveyorBelt'
-import { createWorker } from '../../entities/createWorker'
-import { createEmitter } from '../../core/createEmitter'
-import { OP } from '../../gameplay/ops'
+import { Container, Graphics } from 'pixi.js'
+import { createConveyorBelt } from '../entities/createConveyorBelt'
+import { createWorker } from '../entities/createWorker'
+import { createEmitter } from '../core/createEmitter'
+import { OP } from '../levelConfigs'
+import { getLevelConfigsById } from '../levelConfigs'
 
-function createText(text, style) {
-  return new Text({ text, style })
-}
-
+// 创建收发室场景
 function createMailroomView(app, options) {
   const roomWidth = options.roomWidth
   const roomDepth = options.roomDepth
@@ -60,36 +58,8 @@ function createMailroomView(app, options) {
   worker.setPosition(0, 0)
   world.addChild(worker.container)
 
-  const hud = new Container()
-  root.addChild(hud)
-
-  const hudStyle = {
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto',
-    fontSize: 14,
-    fontWeight: '900',
-    fill: 0x111827,
-  }
-
-  const inboxLabel = createText('', hudStyle)
-  inboxLabel.anchor?.set?.(0.5)
-  hud.addChild(inboxLabel)
-
-  const outboxLabel = createText('', hudStyle)
-  outboxLabel.anchor?.set?.(0.5)
-  hud.addChild(outboxLabel)
-
-  function refreshHud(hudState) {
-    const s = world.scale.x || 1
-    inboxLabel.text = `INBOX ${hudState.inboxCount}/${hudState.expectedOutCount}`
-    outboxLabel.text = `OUTBOX ${hudState.outboxCount}/${hudState.expectedOutCount}`
-
-    inboxLabel.position.set(world.position.x + inboxX * s, world.position.y + (-beltDepth / 2 - 0.7) * s)
-    outboxLabel.position.set(world.position.x + outboxX * s, world.position.y + (-beltDepth / 2 - 0.7) * s)
-  }
-
-  function setSize(width, height, hudState) {
+  function setSize(width, height) {
     updateViewSize(width, height)
-    if (hudState) refreshHud(hudState)
   }
 
   function dispose() {
@@ -107,13 +77,12 @@ function createMailroomView(app, options) {
     outboxBelt,
     worker,
     setSize,
-    refreshHud,
     dispose,
   }
 }
 
+// 创建收发室运行器
 function createMailroomRunner(options) {
-  const config = options.config
   const emitter = options.emitter
   const view = options.view
   const inboxItems = options.inboxItems
@@ -136,18 +105,9 @@ function createMailroomRunner(options) {
     carryingName: '',
   }
 
-  function refreshHud() {
-    view.refreshHud({
-      inboxCount: state.inboxCount,
-      outboxCount: state.outboxCount,
-      expectedOutCount,
-    })
-  }
-
   function updateState(partial) {
     Object.assign(state, partial)
     emitter.emit({ ...state })
-    refreshHud()
   }
 
   function reset() {
@@ -265,7 +225,7 @@ function createMailroomRunner(options) {
       return
     }
 
-    setSuccess(config?.successMessage ?? '恭喜通关！')
+    setSuccess('恭喜通关！')
   }
 
   async function play(programOps) {
@@ -282,10 +242,10 @@ function createMailroomRunner(options) {
     for (let i = 0; i < programOps.length; i += 1) {
       updateState({ pointer: i })
       const op = programOps[i]
-      if (op === OP.INBOX) {
+      if (op === OP.INBOX.title) {
         const ok = await doInbox()
         if (!ok) return
-      } else if (op === OP.OUTBOX) {
+      } else if (op === OP.OUTBOX.title) {
         const ok = await doOutbox()
         if (!ok) return
       } else {
@@ -316,7 +276,6 @@ function createMailroomRunner(options) {
   }
 
   const api = {
-    OP,
     availableOps,
     onStateChange: emitter.on,
     getState: () => ({ ...state }),
@@ -332,7 +291,7 @@ function createMailroomRunner(options) {
   }
 }
 
-export function createMailroomScene(ctx, config) {
+export function createMailroomScene(ctx, levelId) {
   const roomWidth = 8
   const roomDepth = 8
 
@@ -345,14 +304,10 @@ export function createMailroomScene(ctx, config) {
   const beltY = 0
   const moveDuration = 0.55
 
+  const config = getLevelConfigsById(levelId)
   const inboxItems = config?.inboxItems ?? []
   const expectedOutCount = inboxItems.length
-  const availableOps =
-    config?.availableOps ??
-    [
-      { op: OP.INBOX, title: 'INBOX', desc: '取原料（从输入传送带拿一个）' },
-      { op: OP.OUTBOX, title: 'OUTBOX', desc: '放成品（把手里的原料放到输出带）' },
-    ]
+  const availableOps = config?.availableOps
 
   const emitter = createEmitter()
   const view = createMailroomView(ctx.app, {
