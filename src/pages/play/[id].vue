@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createGameApp } from '~/game/runtime/createGameApp'
-import { createMailroomScene } from '~/game/scenes/createMailroomScene'
+import { createGameScene } from '~/game/scenes/createGameScene'
 import { getLevelConfigsById } from '~/game/levelConfigs'
 import MailroomOverlay from '~/components/MailroomOverlay.vue'
 
@@ -17,7 +17,7 @@ const levelConfig = ref(null)
 let app = null
 let off = null
 
-const createSceneTemp = (ctx) => createMailroomScene(ctx, levelId.value)
+const createSceneTemp = (ctx) => createGameScene(ctx, levelId.value)
 
 onMounted(() => {
   const factory = createSceneTemp
