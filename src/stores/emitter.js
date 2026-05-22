@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
 export const useEmitterStore = defineStore('emitter', {
   state: () => ({
@@ -6,11 +6,11 @@ export const useEmitterStore = defineStore('emitter', {
   }),
   actions: {
     emit(payload) {
-      this.listeners.forEach((cb) => cb(payload))
+      this.listeners.forEach((cb) => cb(payload));
     },
     on(cb) {
-      this.listeners.add(cb)
-      return () => this.listeners.delete(cb)
+      this.listeners.add(cb);
+      return () => this.listeners.delete(cb);
     },
   },
-})
+});

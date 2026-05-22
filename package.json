@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "lint": "eslint \"src/**/*.{js,vue}\"",
+    "lint:fix": "eslint \"src/**/*.{js,vue}\" --fix",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
     "unocss": "^66.6.8",
     "unplugin-vue-router": "^0.19.2",
     "vite": "^8.0.8",
+    "globals": "^16.5.0",
     "vite-plugin-vue-devtools": "^8.1.1",
     "vue-eslint-parser": "^10.2.0"
   },

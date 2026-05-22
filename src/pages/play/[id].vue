@@ -1,71 +1,64 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { createGameApp } from '~/game/runtime/createGameApp'
-import { createGameScene } from '~/game/scenes/createGameScene'
-import { getLevelConfigsById } from '~/game/levelConfigs'
-import MailroomOverlay from '~/components/MailroomOverlay.vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { createGameApp } from '~/game/runtime/createGameApp';
+import { createGameScene } from '~/game/scenes/createGameScene';
+import { getLevelConfigsById } from '~/game/levelConfigs';
+import ControlPanel from '~/components/ControlPanel.vue';
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-const levelId = computed(() => +route.params.id)
+const levelId = computed(() => +route.params.id);
 
-const containerRef = ref(null)
-const overlayApiRef = ref(null)
-const levelConfig = ref(null)
-let app = null
-let off = null
+const containerRef = ref(null);
+const overlayApiRef = ref(null);
+const levelConfig = ref(null);
+let app = null;
+let off = null;
 
-const createSceneTemp = (ctx) => createGameScene(ctx, levelId.value)
+const createSceneTemp = (ctx) => createGameScene(ctx, levelId.value);
 
 onMounted(() => {
-  const factory = createSceneTemp
-  if (!containerRef.value || !factory) return
+  const factory = createSceneTemp;
+  if (!containerRef.value || !factory) return;
   Promise.resolve(createGameApp(containerRef.value, factory)).then((created) => {
-    app = created
-    overlayApiRef.value = app.sceneCtl.api
-    levelConfig.value = getLevelConfigsById(levelId.value)
+    app = created;
+    overlayApiRef.value = app.sceneCtl.api;
+    levelConfig.value = getLevelConfigsById(levelId.value);
     off = overlayApiRef.value.onStateChange((s) => {
-      if (s.status !== 'finished' || s.result !== 'success') return
-      const current = levelId.value
-      if (!Number.isFinite(current)) return
-      const nextUnlocked = Math.min(2, current + 1)
-      const saved = localStorage.getItem('bakery-max-level')
-      const savedNum = saved ? parseInt(saved, 10) : 1
-      const target = Math.max(savedNum, nextUnlocked)
-      localStorage.setItem('bakery-max-level', String(target))
-    })
-    app.start()
-  })
-})
+      if (s.status !== 'finished' || s.result !== 'success') return;
+      const current = levelId.value;
+      if (!Number.isFinite(current)) return;
+      const nextUnlocked = Math.min(2, current + 1);
+      const saved = localStorage.getItem('bakery-max-level');
+      const savedNum = saved ? parseInt(saved, 10) : 1;
+      const target = Math.max(savedNum, nextUnlocked);
+      localStorage.setItem('bakery-max-level', String(target));
+    });
+    app.start();
+  });
+});
 
 onBeforeUnmount(() => {
-  off?.()
-  off = null
-  app?.dispose()
-  app = null
-})
+  off?.();
+  off = null;
+  app?.dispose();
+  app = null;
+});
 
 const goBack = () => {
-  router.push('/levels')
-}
+  router.push('/levels');
+};
 </script>
 
 <template>
   <div class="play">
     <div class="play__layout">
-      <div class="play__stage" ref="containerRef"></div>
-      <MailroomOverlay
-        v-if="overlayApiRef"
-        class="play__panel"
-        :api="overlayApiRef"
-        :config="levelConfig"
-      />
+      <div ref="containerRef" class="play__stage"></div>
+      <ControlPanel v-if="overlayApiRef" :api="overlayApiRef" :config="levelConfig" />
     </div>
-    <button class="play__back" type="button" @click="goBack">
-      返回关卡
-    </button>
+    <button class="play__back" type="button" @click="goBack">返回关卡</button>
   </div>
 </template>
 
@@ -75,7 +68,7 @@ const goBack = () => {
   height: 100%;
   overflow: hidden;
   position: relative;
-  background-color: #0f172a;
+  background-color: #fbf1e2;
 
   .play__layout {
     width: 100%;
@@ -86,10 +79,6 @@ const goBack = () => {
 
   .play__stage {
     flex: 1;
-    height: 100%;
-  }
-
-  .play__panel {
     height: 100%;
   }
 

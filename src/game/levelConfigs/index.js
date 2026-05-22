@@ -22,8 +22,4 @@ function getLevelConfigsById(levelId) {
   return levelConfigs[levelId - 1] || null;
 }
 
-export {
-    OP,
-    MATERIALS,
-    getLevelConfigsById
-}
+export { OP, MATERIALS, getLevelConfigsById };

@@ -1,45 +1,41 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
+const router = useRouter();
 
 const levels = ref([
   { id: 1, name: '第一关：收发室' },
   { id: 2, name: '第二关：繁忙的收发室' },
-])
+]);
 
-const maxUnlockedLevel = ref(1)
+const maxUnlockedLevel = ref(1);
 
 onMounted(() => {
-  const saved = localStorage.getItem('bakery-max-level')
-  if (saved) maxUnlockedLevel.value = parseInt(saved, 10)
-})
+  const saved = localStorage.getItem('bakery-max-level');
+  if (saved) maxUnlockedLevel.value = parseInt(saved, 10);
+});
 
 const selectLevel = (levelId) => {
   if (levelId <= maxUnlockedLevel.value) {
-    router.push(`/play/${levelId}`)
+    router.push(`/play/${levelId}`);
   }
-}
+};
 
 const goBack = () => {
-  router.push('/')
-}
+  router.push('/');
+};
 
 const progressText = computed(
-  () => `已解锁：${Math.min(maxUnlockedLevel.value, levels.value.length)}/${levels.value.length}`,
-)
+  () => `已解锁：${Math.min(maxUnlockedLevel.value, levels.value.length)}/${levels.value.length}`
+);
 </script>
 
 <template>
   <div class="levels">
     <div class="levels__header">
-      <button class="header__back" type="button" @click="goBack">
-        返回
-      </button>
-      <div class="header__title">
-        选择关卡
-      </div>
+      <button class="header__back" type="button" @click="goBack">返回</button>
+      <div class="header__title">选择关卡</div>
       <div class="header__progress">
         {{ progressText }}
       </div>
@@ -60,9 +56,7 @@ const progressText = computed(
         <div class="level__name">
           {{ level.name }}
         </div>
-        <div v-if="level.id > maxUnlockedLevel" class="level__lock">
-          🔒
-        </div>
+        <div v-if="level.id > maxUnlockedLevel" class="level__lock">🔒</div>
       </button>
     </div>
   </div>
@@ -166,4 +160,3 @@ const progressText = computed(
   }
 }
 </style>
-
