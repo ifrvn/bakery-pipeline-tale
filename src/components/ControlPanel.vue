@@ -81,23 +81,23 @@ function reset() {
   <div class="overlay">
     <!-- 指令卡片区 -->
     <div class="card-wrap">
-      <button
+      <div
         v-for="card in config.availableOps"
         :key="card.title"
-        class="palette__item"
+        class="op-card"
         type="button"
         draggable="true"
         :disabled="state.status !== 'idle'"
         @dragstart="(e) => onDragStartCard(e, card.title)"
         @click="addByClick(card.title)"
       >
-        <div class="cmd-card">
+        <div class="card-title">
           {{ card.title }}
         </div>
-        <div class="palette__desc">
-          {{ card.desc }}
+        <div class="card-subtitle">
+          {{ card.subTitle }}
         </div>
-      </button>
+      </div>
     </div>
 
     <!-- 右侧面板区 -->
@@ -125,7 +125,7 @@ function reset() {
                 {{ String(index + 1).padStart(2, '0') }}
               </div>
               <div class="row__cmd">
-                <div class="cmd-card">
+                <div class="card-title">
                   {{ step.title }}
                 </div>
               </div>
@@ -180,24 +180,21 @@ function reset() {
 
   .card-wrap {
     width: 150px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
+    position: absolute;
+    left: -150px;
+    top: 30px;
     background: #987f6b;
     padding: 20px;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
 
-    .palette__item {
-      text-align: left;
-      border: 1px solid rgba(0, 0, 0, 0.14);
-      background-color: rgba(255, 255, 255, 0.72);
-      border-radius: 12px;
-      padding: 0.6rem;
+    .op-card {
+      padding: 0.1rem 0.6rem;
       cursor: grab;
-      display: flex;
-      flex-direction: column;
-      gap: 0.45rem;
+      color: #596630;
+      margin-bottom: 10px;
+      background-color: #b2c377;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.55);
 
       &:active {
         cursor: grabbing;
@@ -208,29 +205,21 @@ function reset() {
         opacity: 0.55;
       }
 
-      .cmd-card {
-        height: 34px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        padding: 0 0.7rem;
-        font-weight: 900;
-        color: #596630;
-        background-color: #b3c574;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      .card-title {
+        font-weight: bold;
+        font-size: 1.4rem;
       }
 
-      .palette__desc {
-        color: rgba(40, 20, 8, 0.65);
+      .card-subtitle {
         font-weight: 800;
         font-size: 0.85rem;
-        line-height: 1.25;
       }
     }
   }
 
   .panel-wrap {
     width: 300px;
+    padding: 1rem;
     background-color: #bba694;
     display: flex;
     flex-direction: column;
@@ -239,27 +228,22 @@ function reset() {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 
     .panel__header {
-      padding: 1.1rem 1rem;
-      background-color: rgba(0, 0, 0, 0.18);
-      border-bottom: 1px solid rgba(0, 0, 0, 0.16);
       font-weight: 900;
-      color: rgba(40, 20, 8, 0.9);
-      letter-spacing: 0.08em;
-      font-size: 1.1rem;
+      color: #948275;
+      font-size: 3rem;
     }
 
     .panel__body {
       flex: 1;
-      padding: 1rem;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       gap: 0.9rem;
 
       .panel__mission {
-        background-color: rgba(255, 255, 255, 0.55);
+        background-color: #e4dfc4;
         border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 12px;
+        border-radius: 10px;
         padding: 0.75rem 0.85rem;
         color: rgba(40, 20, 8, 0.82);
         font-weight: 800;
@@ -301,7 +285,7 @@ function reset() {
             align-items: center;
 
             &.is-active {
-              .cmd-card {
+              .card-title {
                 box-shadow: 0 0 0 2px rgba(50, 205, 50, 0.35);
               }
             }
@@ -314,7 +298,7 @@ function reset() {
             }
 
             .row__cmd {
-              .cmd-card {
+              .card-title {
                 height: 34px;
                 border-radius: 6px;
                 background-color: rgba(145, 215, 93, 0.9);
