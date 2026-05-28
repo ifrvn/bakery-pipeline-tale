@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createGameApp } from '~/game/runtime/createGameApp';
 import { createGameScene } from '~/game/scenes/createGameScene';
-import { getLevelConfigsById } from '~/game/levelConfigs';
+import { getLevelConfigsById, getLevelCount } from '~/game/levelConfigs';
 import ControlPanel from '~/components/ControlPanel.vue';
 
 const route = useRoute();
@@ -30,7 +30,7 @@ onMounted(() => {
       if (s.status !== 'finished' || s.result !== 'success') return;
       const current = levelId.value;
       if (!Number.isFinite(current)) return;
-      const nextUnlocked = Math.min(2, current + 1);
+      const nextUnlocked = Math.min(getLevelCount(), current + 1);
       const saved = localStorage.getItem('bakery-max-level');
       const savedNum = saved ? parseInt(saved, 10) : 1;
       const target = Math.max(savedNum, nextUnlocked);

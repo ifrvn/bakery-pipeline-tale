@@ -1,13 +1,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { getLevelConfigsById, getLevelCount } from '@/game/levelConfigs';
 
 const router = useRouter();
 
-const levels = ref([
-  { id: 1, name: '第一关：收发室' },
-  { id: 2, name: '第二关：繁忙的收发室' },
-]);
+const totalLevels = getLevelCount();
+
+const levels = computed(() =>
+  Array.from({ length: totalLevels }, (_, i) => {
+    const cfg = getLevelConfigsById(i + 1);
+    return { id: i + 1, name: `第${i + 1}关：${cfg.levelName}` };
+  })
+);
 
 const maxUnlockedLevel = ref(1);
 
@@ -27,7 +32,7 @@ const goBack = () => {
 };
 
 const progressText = computed(
-  () => `已解锁：${Math.min(maxUnlockedLevel.value, levels.value.length)}/${levels.value.length}`
+  () => `已解锁：${Math.min(maxUnlockedLevel.value, totalLevels)}/${totalLevels}`
 );
 </script>
 
