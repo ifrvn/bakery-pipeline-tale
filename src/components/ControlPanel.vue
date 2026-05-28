@@ -12,6 +12,14 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  onNextLevel: {
+    type: Function,
+    default: null,
+  },
+  onReplay: {
+    type: Function,
+    default: null,
+  },
 });
 
 const steps = ref([]);
@@ -155,7 +163,25 @@ function reset() {
             'is-fail': state.result === 'fail',
           }"
         >
-          {{ state.message }}
+          <div class="result__message">{{ state.message }}</div>
+          <div class="result__actions">
+            <button
+              v-if="state.result === 'success' && onNextLevel"
+              class="result__btn result__btn--next"
+              type="button"
+              @click="onNextLevel"
+            >
+              下一关 →
+            </button>
+            <button
+              v-if="onReplay"
+              class="result__btn"
+              type="button"
+              @click="onReplay"
+            >
+              重玩
+            </button>
+          </div>
         </div>
       </div>
 
@@ -349,6 +375,42 @@ function reset() {
         padding: 0.75rem 0.85rem;
         font-weight: 900;
         line-height: 1.35;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+
+        .result__message {
+          line-height: 1.4;
+        }
+
+        .result__actions {
+          display: flex;
+          gap: 0.5rem;
+
+          .result__btn {
+            flex: 1;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            background-color: rgba(255, 255, 255, 0.55);
+            color: rgba(0, 0, 0, 0.75);
+            font-weight: 900;
+            cursor: pointer;
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.8);
+            }
+
+            &.result__btn--next {
+              background-color: rgba(145, 215, 93, 0.85);
+              border-color: rgba(0, 0, 0, 0.18);
+
+              &:hover {
+                background-color: rgba(145, 215, 93, 1);
+              }
+            }
+          }
+        }
 
         &.is-success {
           background-color: rgba(16, 185, 129, 0.12);

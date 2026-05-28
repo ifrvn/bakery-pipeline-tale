@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createGameApp } from '~/game/runtime/createGameApp';
 import { createGameScene } from '~/game/scenes/createGameScene';
@@ -17,12 +17,9 @@ const levelConfig = ref(null);
 let app = null;
 let off = null;
 
-const createSceneTemp = (ctx) => createGameScene(ctx, levelId.value);
-
-onMounted(() => {
-  const factory = createSceneTemp;
-  if (!containerRef.value || !factory) return;
-  Promise.resolve(createGameApp(containerRef.value, factory)).then((created) => {
+function initGame() {
+  if (!containerRef.value) return;
+  Promise.resolve(createGameApp(containerRef.value, (ctx) => createGameScene(ctx, levelId.value))).then((created) => {
     app = created;
     overlayApiRef.value = app.sceneCtl.api;
     levelConfig.value = getLevelConfigsById(levelId.value);
@@ -38,17 +35,42 @@ onMounted(() => {
     });
     app.start();
   });
-});
+}
 
-onBeforeUnmount(() => {
+function destroyGame() {
   off?.();
   off = null;
   app?.dispose();
   app = null;
+  overlayApiRef.value = null;
+  levelConfig.value = null;
+}
+
+onMounted(() => {
+  initGame();
+});
+
+onBeforeUnmount(() => {
+  destroyGame();
+});
+
+watch(levelId, () => {
+  destroyGame();
+  initGame();
 });
 
 const goBack = () => {
   router.push('/levels');
+};
+
+const isLastLevel = computed(() => levelId.value >= getLevelCount());
+
+const goNextLevel = () => {
+  router.push(`/play/${levelId.value + 1}`);
+};
+
+const replayLevel = () => {
+  overlayApiRef.value?.reset();
 };
 </script>
 
@@ -56,7 +78,14 @@ const goBack = () => {
   <div class="play">
     <div class="play__layout">
       <div ref="containerRef" class="play__stage"></div>
-      <ControlPanel v-if="overlayApiRef" :api="overlayApiRef" :config="levelConfig" />
+      <ControlPanel
+        v-if="overlayApiRef"
+        :key="levelId"
+        :api="overlayApiRef"
+        :config="levelConfig"
+        :on-next-level="isLastLevel ? null : goNextLevel"
+        :on-replay="replayLevel"
+      />
     </div>
     <button class="play__back" type="button" @click="goBack">返回关卡</button>
   </div>
