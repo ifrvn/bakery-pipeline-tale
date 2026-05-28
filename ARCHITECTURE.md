@@ -1,6 +1,6 @@
 # 烘焙流水线物语 — 项目架构文档
 
-> 最后更新：2026-05-28
+> 最后更新：2026-05-28（添加 JUMP/SUB 指令、新增第 3 关、关卡列表页动态化）
 
 ---
 
@@ -74,6 +74,8 @@ bakery-pipeline-tale/
         │   ├── index.js          # GameRunner（程序执行引擎）
         │   ├── inbox.js          # INBOX 指令逻辑
         │   ├── outbox.js         # OUTBOX 指令逻辑
+        │   ├── jump.js           # JUMP 跳转指令逻辑
+        │   ├── sub.js            # SUB 丢弃指令逻辑
         │   └── common.js         # 公共工具（历史遗留，updateState 草稿）
         ├── runtime/
         │   └── createGameApp.js  # 顶层运行时（PixiApp + Scene + ResizeObserver + Ticker）
@@ -172,12 +174,20 @@ state 状态机:
 
 **指令调度**（handlers 映射表）：
 
-| 指令键 | 处理函数 |
-|--------|---------|
-| `inbox` | `runInbox` — 移动小人到输入带旁，取走首个原料 |
-| `outbox` | `runOutbox` — 移动小人到输出带旁，放下手持原料 |
+| 指令键 | 处理函数 | 说明 |
+|--------|----------|------|
+| `inbox` | `runInbox` | 移动小人到输入带旁，取走首个原料；带为空时返回 `'terminate'` 自然终止 |
+| `outbox` | `runOutbox` | 移动小人到输出带旁，放下手持原料 |
+| `jump` | `runJump` | 返回 `{ jumpTo }` 跳转到指定行（0-based），不执行任何动画 |
+| `sub` | `runSub` | 丢弃小人手中原料（废料处理），无需移动 |
 
-`play(programOps)` 按序异步执行每条指令，每条指令返回 `Promise<boolean>`，`false` 即失败终止。
+`play(programOps)` 接收 `{ title, target? }[]` 对象数组，按序异步执行：
+- 返回 `false` → 已在 handler 内调用 `setFail`，终止
+- 返回 `'terminate'` → 自然终止，交由 `evaluateAfterRun` 判断成败
+- 返回 `{ jumpTo }` → 跳转至目标行
+- 返回 `true` → 继续下一条
+
+内置 **2000 步上限**，防止死循环程序卡死游戏。
 
 ### 5.4 实体：传送带 `createConveyorBelt`
 
@@ -213,10 +223,10 @@ OP（指令枚举）             MATERIALS（原料枚举）
 INBOX  / OUTBOX            BREAD（面包坯）
 ADD    / SUB               CREAM（奶油）
 JUMP                       STRAWBERRY（草莓）
-JUMP_IF_STRAWBERRY
+JUMP_IF_STRAWBERRY         SCRAP（废料）
 ```
 
-`levelConfigs` 数组（当前 2 关）每项包含：
+`levelConfigs` 数组（当前 3 关）每项包含：
 
 | 字段 | 说明 |
 |------|------|
@@ -224,7 +234,11 @@ JUMP_IF_STRAWBERRY
 | `levelName` | 关卡名称 |
 | `levelDesc` | 关卡描述（显示在面板） |
 | `inboxItems` | 输入传送带初始原料列表 |
+| `expectedOutCount` | 期望输出数量（可选，默认等于 inboxItems.length） |
 | `availableOps` | 可用指令集合（显示为卡片） |
+| `successMessage` | 通关提示文案 |
+
+辅助函数 `getLevelCount()` 返回关卡总数，供关卡列表页动态渲染使用。
 
 ### 5.7 控制面板 `ControlPanel.vue`
 
@@ -307,24 +321,28 @@ play/[id].vue
 - 游戏基础场景（传送带、小人、背景）
 - 游戏基础逻辑（拖拽指令、按序播放、成功/失败判定）
 - INBOX / OUTBOX 指令及动画
+- **JUMP 跳转指令**（无条件循环，程序列表中显示目标行输入框）
+- **SUB 丢弃指令**（废料处理，丢弃手持原料）
 - 关卡选择与解锁进度持久化
 - 响应式画布（ResizeObserver 自适应）
 - Landing 页、关卡列表页、游戏页完整导航流程
 - **OpCard 组件提取**（可复用指令卡片）
 - **vue-draggable-plus 拖拽优化**（程序列表支持拖拽排序）
+- **3 个关卡配置**（基础取放 / 循环生产 / 废料分拣）
+- 关卡列表页动态读取 `getLevelCount()`，新增关卡无需改 UI
+- 执行引擎防死循环保护（2000 步上限）
 
 ### 🚧 待实现
 
 **逻辑层**
-- JUMP 跳转指令（无条件循环）
-- SUB 移除指令（需手持 1 个原料）
 - ADD 合并指令（需手持 2 个原料相加）
+- JUMP_IF_STRAWBERRY 条件跳转指令
 
 **UI 层**
 - 小人精细化绘制
 - 原料图标素材
 - 播放/暂停按钮素材
-- 通关/失败结算弹框
+- 通关/失败结算弹框（显示步骤数、重玩/下一关按钮）
 - 游戏场景优化（2D 俯视烘焙房间）
 - 传送带样式优化（L 型 + 卡通版）
 
