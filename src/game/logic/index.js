@@ -2,6 +2,11 @@ import { OP } from '../levelConfigs';
 import { useEmitterStore } from '@/stores/emitter';
 import { runInbox } from './inbox';
 import { runOutbox } from './outbox';
+import { runJump } from './jump';
+import { runSub } from './sub';
+
+/** play() 单次执行的最大步骤数，防止死循环 */
+const MAX_ITERATIONS = 2000;
 
 export function createGameRunner(options) {
   const emitter = useEmitterStore();
@@ -22,7 +27,7 @@ export function createGameRunner(options) {
     result: '',
     message: '',
     expectedOutCount,
-    inboxCount: expectedOutCount,
+    inboxCount: inboxItems.length,
     outboxCount: 0,
     carryingName: '',
   };
@@ -82,7 +87,7 @@ export function createGameRunner(options) {
       pointer: -1,
       result: '',
       message: '',
-      inboxCount: expectedOutCount,
+      inboxCount: inboxItems.length,
       outboxCount: 0,
       carryingName: '',
     });
@@ -113,8 +118,14 @@ export function createGameRunner(options) {
   const handlers = {
     [OP.INBOX.title]: runInbox,
     [OP.OUTBOX.title]: runOutbox,
+    [OP.JUMP.title]: runJump,
+    [OP.SUB.title]: runSub,
   };
 
+  /**
+   * 执行程序指令序列。
+   * @param {Array<{title: string, target?: number}>} programOps  指令对象数组
+   */
   async function play(programOps) {
     if (state.status !== 'idle') return;
     if (!Array.isArray(programOps) || programOps.length === 0) return;
@@ -126,16 +137,35 @@ export function createGameRunner(options) {
       message: '',
     });
 
+    let iterCount = 0;
+
     for (let i = 0; i < programOps.length; i += 1) {
-      updateState({ pointer: i });
-      const op = programOps[i];
-      const fn = handlers[op];
-      if (!fn) {
-        setFail(`未知指令：${op}`);
+      iterCount += 1;
+      if (iterCount > MAX_ITERATIONS) {
+        setFail('程序步骤过多，可能存在死循环！');
         return;
       }
-      const ok = await fn(runnerCtx);
-      if (!ok) return;
+
+      updateState({ pointer: i });
+      const op = programOps[i];
+      const fn = handlers[op.title];
+      if (!fn) {
+        setFail(`未知指令：${op.title}`);
+        return;
+      }
+
+      const result = await fn(runnerCtx, op);
+
+      if (result === false) return;               // 已在 handler 内调用 setFail
+      if (result === 'terminate') {               // 输入带为空 → 自然终止
+        evaluateAfterRun();
+        return;
+      }
+      if (result !== null && typeof result === 'object' && 'jumpTo' in result) {
+        // JUMP：将 i 设为目标前一个，循环 i++ 后到达目标
+        i = result.jumpTo - 1;
+      }
+      // result === true → 继续下一条
     }
 
     evaluateAfterRun();

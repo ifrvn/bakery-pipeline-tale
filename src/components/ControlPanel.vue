@@ -37,13 +37,19 @@ onBeforeUnmount(() => {
  * Called when a card is cloned from the palette into the program list.
  * vue-draggable-plus passes the original item; we assign a unique id here.
  */
+function makeStep(card) {
+  const step = { id: nextStepId++, title: card.title };
+  if (card.title === 'jump') step.target = 1;
+  return step;
+}
+
 function onClone(item) {
-  return { id: nextStepId++, title: item.title };
+  return makeStep(item);
 }
 
 function addByClick(card) {
   if (!isIdle.value) return;
-  steps.value = [...steps.value, { id: nextStepId++, title: card.title }];
+  steps.value = [...steps.value, makeStep(card)];
 }
 
 function removeStep(stepId) {
@@ -56,7 +62,9 @@ function clearProgram() {
   steps.value = [];
 }
 
-const programOps = computed(() => steps.value.map((s) => s.title));
+const programOps = computed(() =>
+  steps.value.map((s) => (s.target !== undefined ? { title: s.title, target: s.target } : { title: s.title }))
+);
 
 function play() {
   if (!isIdle.value) return;
@@ -124,6 +132,16 @@ function reset() {
             </div>
             <div class="row__cmd">
               <div class="card-title">{{ step.title }}</div>
+              <input
+                v-if="step.title === 'jump'"
+                v-model.number="step.target"
+                class="jump-target"
+                type="number"
+                min="1"
+                :max="steps.length"
+                :disabled="!isIdle"
+                title="跳转到第几步"
+              />
             </div>
             <button class="row__remove" type="button" :disabled="!isIdle" @click="removeStep(step.id)">×</button>
           </div>
@@ -275,6 +293,10 @@ function reset() {
           }
 
           .row__cmd {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+
             .card-title {
               height: 34px;
               border-radius: 6px;
@@ -286,6 +308,23 @@ function reset() {
               font-weight: 900;
               color: rgba(0, 0, 0, 0.75);
               text-transform: lowercase;
+            }
+
+            .jump-target {
+              width: 100%;
+              height: 24px;
+              border-radius: 4px;
+              border: 1px solid rgba(0, 0, 0, 0.22);
+              background: rgba(255, 255, 255, 0.7);
+              text-align: center;
+              font-weight: 900;
+              font-size: 0.8rem;
+              color: rgba(0, 0, 0, 0.75);
+              padding: 0 4px;
+
+              &:disabled {
+                opacity: 0.5;
+              }
             }
           }
 
