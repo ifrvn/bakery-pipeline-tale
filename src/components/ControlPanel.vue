@@ -79,11 +79,15 @@ function reset() {
       :sort="false"
       :disabled="!isIdle"
       :clone="onClone"
-      item-key="title"
     >
-      <template #item="{ element: card }">
-        <OpCard :title="card.title" :sub-title="card.subTitle" :disabled="!isIdle" @click="addByClick(card)" />
-      </template>
+      <OpCard
+        v-for="card in config.availableOps"
+        :key="card.title"
+        :title="card.title"
+        :sub-title="card.subTitle"
+        :disabled="!isIdle"
+        @click="addByClick(card)"
+      />
     </VueDraggable>
 
     <!-- 右侧面板区 -->
@@ -102,30 +106,27 @@ function reset() {
           class="panel__program"
           :group="{ name: 'ops', pull: false, put: true }"
           :disabled="!isIdle"
-          item-key="id"
           handle=".row__handle"
           ghost-class="row--ghost"
         >
-          <template #header>
-            <div v-if="steps.length === 0" class="program__empty">把指令卡片拖进来</div>
-          </template>
-          <template #item="{ element: step, index }">
-            <div
-              class="program__row"
-              :class="{
-                'is-active': state.status === 'running' && state.pointer === index,
-              }"
-            >
-              <span class="row__handle" :class="{ 'is-disabled': !isIdle }" title="拖动排序">⠿</span>
-              <div class="row__no">
-                {{ String(index + 1).padStart(2, '0') }}
-              </div>
-              <div class="row__cmd">
-                <div class="card-title">{{ step.title }}</div>
-              </div>
-              <button class="row__remove" type="button" :disabled="!isIdle" @click="removeStep(step.id)">×</button>
+          <div v-if="steps.length === 0" class="program__empty">把指令卡片拖进来</div>
+          <div
+            v-for="(step, index) in steps"
+            :key="step.id"
+            class="program__row"
+            :class="{
+              'is-active': state.status === 'running' && state.pointer === index,
+            }"
+          >
+            <span class="row__handle" :class="{ 'is-disabled': !isIdle }" title="拖动排序">⠿</span>
+            <div class="row__no">
+              {{ String(index + 1).padStart(2, '0') }}
             </div>
-          </template>
+            <div class="row__cmd">
+              <div class="card-title">{{ step.title }}</div>
+            </div>
+            <button class="row__remove" type="button" :disabled="!isIdle" @click="removeStep(step.id)">×</button>
+          </div>
         </VueDraggable>
 
         <div
