@@ -1,6 +1,6 @@
 # 烘焙流水线物语 — 项目架构文档
 
-> 生成时间：2026-05-28
+> 最后更新：2026-05-28
 
 ---
 
@@ -18,6 +18,7 @@
 | 状态管理 | Pinia | 跨组件事件总线（emitter store） |
 | 路由 | vue-router v5 + unplugin-vue-router | 基于文件系统的自动路由 |
 | 游戏渲染 | PixiJS v8 | WebGL/WebGPU 2D 场景渲染 |
+| 拖拽交互 | vue-draggable-plus | 基于 Sortable.js 的拖拽排序（指令卡片 + 程序列表） |
 | 样式 | UnoCSS + SASS/SCSS | 原子 CSS + 组件作用域样式 |
 | 构建工具 | Vite v8 | 开发服务器 & 生产构建 |
 | 包管理 | pnpm (workspace) | monorepo 支持 |
@@ -48,7 +49,8 @@ bakery-pipeline-tale/
     ├── assets/
     │   └── images/               # 图片资源（含 landing_bg.png）
     ├── components/
-    │   └── ControlPanel.vue      # 游戏控制面板（指令卡片 + 程序列表 + 操作按钮）
+    │   ├── ControlPanel.vue      # 游戏控制面板（指令卡片 + 程序列表 + 操作按钮）
+    │   └── OpCard.vue            # 指令卡片组件（可复用，支持拖拽/点击/禁用状态）
     ├── pages/                    # 文件路由页面
     │   ├── index.vue             # 主页（Landing 页，点击进入关卡列表）
     │   ├── levels/
@@ -230,10 +232,24 @@ JUMP_IF_STRAWBERRY
 
 纯 Vue 展示/交互组件，通过 props 接收 `api` 和 `config`，不直接引用 PixiJS：
 
-- **指令卡片区**（左侧浮动）：按 `config.availableOps` 渲染可拖拽/点击的卡片
-- **程序列表区**（右侧面板）：拖放目标区，展示已排列的指令序列，支持逐条删除；正在执行的行高亮
+- **指令卡片区**（左侧浮动，`VueDraggable` clone 模式）：按 `config.availableOps` 渲染 `OpCard`，支持拖出复制到程序列表，也支持点击追加
+- **程序列表区**（右侧面板，`VueDraggable` sort 模式）：接收拖入的指令卡片，支持列表内**拖拽排序**（⠿ 把手）和逐条删除；正在执行的行高亮
 - **结果区**：`status === 'finished'` 时展示成功（绿色）或失败（红色）信息
 - **操作栏**：播放 / 重置 / 清空 按钮，按 `state.status` 控制 disabled 状态
+
+### 5.8 指令卡片 `OpCard.vue`
+
+**文件**：`src/components/OpCard.vue`
+
+可复用的原子组件，渲染单张指令卡片：
+
+| prop | 类型 | 说明 |
+|------|------|------|
+| `title` | String（必填） | 指令名称（如 `inbox`） |
+| `subTitle` | String | 指令副标题（如 `(取原料)`） |
+| `disabled` | Boolean | 禁用状态（游戏运行中禁止操作） |
+
+emit `click` 事件供父组件处理点击追加逻辑。
 
 ---
 
@@ -294,6 +310,8 @@ play/[id].vue
 - 关卡选择与解锁进度持久化
 - 响应式画布（ResizeObserver 自适应）
 - Landing 页、关卡列表页、游戏页完整导航流程
+- **OpCard 组件提取**（可复用指令卡片）
+- **vue-draggable-plus 拖拽优化**（程序列表支持拖拽排序）
 
 ### 🚧 待实现
 
@@ -301,7 +319,6 @@ play/[id].vue
 - JUMP 跳转指令（无条件循环）
 - SUB 移除指令（需手持 1 个原料）
 - ADD 合并指令（需手持 2 个原料相加）
-- 操作卡片组件提取 + vue-draggable 优化拖动体验
 
 **UI 层**
 - 小人精细化绘制
