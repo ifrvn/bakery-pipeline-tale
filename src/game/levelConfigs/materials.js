@@ -14,4 +14,9 @@ export const MATERIALS = {
     name: '草莓',
     color: 0xff4d6d,
   },
+  SCRAP: {
+    id: 'scrap-1',
+    name: '废料',
+    color: 0x888888,
+  },
 };

@@ -95,7 +95,7 @@ export function createGameScene(ctx, levelId) {
 
   const config = getLevelConfigsById(levelId);
   const inboxItems = config?.inboxItems ?? [];
-  const expectedOutCount = inboxItems.length;
+  const expectedOutCount = config?.expectedOutCount ?? inboxItems.length;
   const availableOps = config?.availableOps;
 
   const view = createGameView(ctx.app, {

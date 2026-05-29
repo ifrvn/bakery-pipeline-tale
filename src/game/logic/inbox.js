@@ -7,8 +7,8 @@ export async function runInbox(ctx) {
     return false;
   }
   if (inboxBelt.state.items.length === 0) {
-    ctx.setFail('输入传送带已经空了，无法继续 INBOX');
-    return false;
+    // 输入带为空时自然终止程序（交由 evaluateAfterRun 判断成败）
+    return 'terminate';
   }
 
   const pickup = inboxBelt.getPickupPoint({ x: 0, y: 0 });

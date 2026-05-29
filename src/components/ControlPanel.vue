@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { OP } from '@/game/levelConfigs';
+import { VueDraggable } from 'vue-draggable-plus';
+import OpCard from './OpCard.vue';
 
 const props = defineProps({
   api: {
@@ -11,6 +12,14 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  onNextLevel: {
+    type: Function,
+    default: null,
+  },
+  onReplay: {
+    type: Function,
+    default: null,
+  },
 });
 
 const steps = ref([]);
@@ -18,6 +27,8 @@ const state = ref(props.api.getState());
 let off = null;
 
 let nextStepId = 1;
+
+const isIdle = computed(() => state.value.status === 'idle');
 
 onMounted(() => {
   off = props.api.onStateChange((s) => {
@@ -30,44 +41,41 @@ onBeforeUnmount(() => {
   off = null;
 });
 
-function onDragStartCard(e, op) {
-  e.dataTransfer?.setData('text/plain', op);
-  e.dataTransfer?.setData('application/x-bakery-op', op);
-  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+/**
+ * Called when a card is cloned from the palette into the program list.
+ * vue-draggable-plus passes the original item; we assign a unique id here.
+ */
+function makeStep(card) {
+  const step = { id: nextStepId++, title: card.title };
+  if (card.title === 'jump') step.target = 1;
+  return step;
 }
 
-function readDroppedOp(e) {
-  const op = e.dataTransfer?.getData('application/x-bakery-op') || e.dataTransfer?.getData('text/plain') || '';
-  return op ?? '';
+function onClone(item) {
+  return makeStep(item);
 }
 
-function onDropToProgram(e) {
-  if (state.value.status !== 'idle') return;
-  const op = readDroppedOp(e);
-  if (op === OP.INBOX.title || op === OP.OUTBOX.title) {
-    steps.value = [...steps.value, { id: nextStepId++, title: op }];
-  }
-}
-
-function addByClick(title) {
-  if (state.value.status !== 'idle') return;
-  steps.value = [...steps.value, { id: nextStepId++, title }];
+function addByClick(card) {
+  if (!isIdle.value) return;
+  steps.value = [...steps.value, makeStep(card)];
 }
 
 function removeStep(stepId) {
-  if (state.value.status !== 'idle') return;
+  if (!isIdle.value) return;
   steps.value = steps.value.filter((s) => s.id !== stepId);
 }
 
 function clearProgram() {
-  if (state.value.status !== 'idle') return;
+  if (!isIdle.value) return;
   steps.value = [];
 }
 
-const programOps = computed(() => steps.value.map((s) => s.title));
+const programOps = computed(() =>
+  steps.value.map((s) => (s.target !== undefined ? { title: s.title, target: s.target } : { title: s.title }))
+);
 
 function play() {
-  if (state.value.status !== 'idle') return;
+  if (!isIdle.value) return;
   props.api.play(programOps.value);
 }
 
@@ -79,26 +87,24 @@ function reset() {
 
 <template>
   <div class="overlay">
-    <!-- 指令卡片区 -->
-    <div class="card-wrap">
-      <div
+    <!-- 指令卡片区（拖拽源，clone 模式） -->
+    <VueDraggable
+      class="card-wrap"
+      :model-value="config.availableOps"
+      :group="{ name: 'ops', pull: 'clone', put: false }"
+      :sort="false"
+      :disabled="!isIdle"
+      :clone="onClone"
+    >
+      <OpCard
         v-for="card in config.availableOps"
         :key="card.title"
-        class="op-card"
-        type="button"
-        draggable="true"
-        :disabled="state.status !== 'idle'"
-        @dragstart="(e) => onDragStartCard(e, card.title)"
-        @click="addByClick(card.title)"
-      >
-        <div class="card-title">
-          {{ card.title }}
-        </div>
-        <div class="card-subtitle">
-          {{ card.subTitle }}
-        </div>
-      </div>
-    </div>
+        :title="card.title"
+        :sub-title="card.subTitle"
+        :disabled="!isIdle"
+        @click="addByClick(card)"
+      />
+    </VueDraggable>
 
     <!-- 右侧面板区 -->
     <div class="panel-wrap">
@@ -110,36 +116,44 @@ function reset() {
           {{ config.levelDesc }}
         </div>
 
-        <div class="panel__program" @dragover.prevent @drop.prevent="onDropToProgram">
+        <!-- 程序列表（拖拽目标，可排序） -->
+        <VueDraggable
+          v-model="steps"
+          class="panel__program"
+          :group="{ name: 'ops', pull: false, put: true }"
+          :disabled="!isIdle"
+          handle=".row__handle"
+          ghost-class="row--ghost"
+        >
           <div v-if="steps.length === 0" class="program__empty">把指令卡片拖进来</div>
-          <div v-else class="program__list">
-            <div
-              v-for="(step, index) in steps"
-              :key="step.id"
-              class="program__row"
-              :class="{
-                'is-active': state.status === 'running' && state.pointer === index,
-              }"
-            >
-              <div class="row__no">
-                {{ String(index + 1).padStart(2, '0') }}
-              </div>
-              <div class="row__cmd">
-                <div class="card-title">
-                  {{ step.title }}
-                </div>
-              </div>
-              <button
-                class="row__remove"
-                type="button"
-                :disabled="state.status !== 'idle'"
-                @click="removeStep(step.id)"
-              >
-                ×
-              </button>
+          <div
+            v-for="(step, index) in steps"
+            :key="step.id"
+            class="program__row"
+            :class="{
+              'is-active': state.status === 'running' && state.pointer === index,
+            }"
+          >
+            <span class="row__handle" :class="{ 'is-disabled': !isIdle }" title="拖动排序">⠿</span>
+            <div class="row__no">
+              {{ String(index + 1).padStart(2, '0') }}
             </div>
+            <div class="row__cmd">
+              <div class="card-title">{{ step.title }}</div>
+              <input
+                v-if="step.title === 'jump'"
+                v-model.number="step.target"
+                class="jump-target"
+                type="number"
+                min="1"
+                :max="steps.length"
+                :disabled="!isIdle"
+                title="跳转到第几步"
+              />
+            </div>
+            <button class="row__remove" type="button" :disabled="!isIdle" @click="removeStep(step.id)">×</button>
           </div>
-        </div>
+        </VueDraggable>
 
         <div
           v-if="state.status === 'finished'"
@@ -149,21 +163,34 @@ function reset() {
             'is-fail': state.result === 'fail',
           }"
         >
-          {{ state.message }}
+          <div class="result__message">{{ state.message }}</div>
+          <div class="result__actions">
+            <button
+              v-if="state.result === 'success' && onNextLevel"
+              class="result__btn result__btn--next"
+              type="button"
+              @click="onNextLevel"
+            >
+              下一关 →
+            </button>
+            <button
+              v-if="onReplay"
+              class="result__btn"
+              type="button"
+              @click="onReplay"
+            >
+              重玩
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="panel__controls">
-        <button
-          class="control control--play"
-          type="button"
-          :disabled="state.status !== 'idle' || steps.length === 0"
-          @click="play"
-        >
+        <button class="control control--play" type="button" :disabled="!isIdle || steps.length === 0" @click="play">
           播放
         </button>
         <button class="control" type="button" :disabled="state.status === 'running'" @click="reset">重置</button>
-        <button class="control" type="button" :disabled="state.status !== 'idle'" @click="clearProgram">清空</button>
+        <button class="control" type="button" :disabled="!isIdle" @click="clearProgram">清空</button>
       </div>
     </div>
   </div>
@@ -187,34 +214,9 @@ function reset() {
     padding: 20px;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
-
-    .op-card {
-      padding: 0.1rem 0.6rem;
-      cursor: grab;
-      color: #596630;
-      margin-bottom: 10px;
-      background-color: #b2c377;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.55);
-
-      &:active {
-        cursor: grabbing;
-      }
-
-      &:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
-      }
-
-      .card-title {
-        font-weight: bold;
-        font-size: 1.4rem;
-      }
-
-      .card-subtitle {
-        font-weight: 800;
-        font-size: 0.85rem;
-      }
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .panel-wrap {
@@ -257,6 +259,9 @@ function reset() {
         border: 1px solid rgba(0, 0, 0, 0.16);
         overflow: auto;
         padding: 0.75rem 0.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
 
         .program__empty {
           height: 100%;
@@ -273,57 +278,93 @@ function reset() {
           line-height: 1.35;
         }
 
-        .program__list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.55rem;
+        .program__row {
+          display: grid;
+          grid-template-columns: 22px 44px 1fr 28px;
+          gap: 0.45rem;
+          align-items: center;
 
-          .program__row {
-            display: grid;
-            grid-template-columns: 44px 1fr 28px;
-            gap: 0.55rem;
-            align-items: center;
+          &.is-active {
+            .card-title {
+              box-shadow: 0 0 0 2px rgba(50, 205, 50, 0.35);
+            }
+          }
 
-            &.is-active {
-              .card-title {
-                box-shadow: 0 0 0 2px rgba(50, 205, 50, 0.35);
-              }
+          &.row--ghost {
+            opacity: 0.4;
+          }
+
+          .row__handle {
+            color: rgba(40, 20, 8, 0.45);
+            font-size: 1.1rem;
+            cursor: grab;
+            text-align: center;
+            line-height: 1;
+
+            &:active {
+              cursor: grabbing;
             }
 
-            .row__no {
-              color: rgba(40, 20, 8, 0.65);
-              font-weight: 900;
-              text-align: right;
-              font-variant-numeric: tabular-nums;
+            &.is-disabled {
+              cursor: not-allowed;
+              opacity: 0.35;
             }
+          }
 
-            .row__cmd {
-              .card-title {
-                height: 34px;
-                border-radius: 6px;
-                background-color: rgba(145, 215, 93, 0.9);
-                border: 1px solid rgba(0, 0, 0, 0.22);
-                display: flex;
-                align-items: center;
-                padding: 0 0.7rem;
-                font-weight: 900;
-                color: rgba(0, 0, 0, 0.75);
-                text-transform: lowercase;
-              }
-            }
+          .row__no {
+            color: rgba(40, 20, 8, 0.65);
+            font-weight: 900;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+          }
 
-            .row__remove {
-              height: 26px;
+          .row__cmd {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+
+            .card-title {
+              height: 34px;
               border-radius: 6px;
-              border: 1px solid rgba(0, 0, 0, 0.14);
-              background-color: rgba(255, 255, 255, 0.6);
-              color: rgba(0, 0, 0, 0.6);
-              cursor: pointer;
+              background-color: rgba(145, 215, 93, 0.9);
+              border: 1px solid rgba(0, 0, 0, 0.22);
+              display: flex;
+              align-items: center;
+              padding: 0 0.7rem;
+              font-weight: 900;
+              color: rgba(0, 0, 0, 0.75);
+              text-transform: lowercase;
+            }
+
+            .jump-target {
+              width: 100%;
+              height: 24px;
+              border-radius: 4px;
+              border: 1px solid rgba(0, 0, 0, 0.22);
+              background: rgba(255, 255, 255, 0.7);
+              text-align: center;
+              font-weight: 900;
+              font-size: 0.8rem;
+              color: rgba(0, 0, 0, 0.75);
+              padding: 0 4px;
 
               &:disabled {
-                cursor: not-allowed;
-                opacity: 0.45;
+                opacity: 0.5;
               }
+            }
+          }
+
+          .row__remove {
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.14);
+            background-color: rgba(255, 255, 255, 0.6);
+            color: rgba(0, 0, 0, 0.6);
+            cursor: pointer;
+
+            &:disabled {
+              cursor: not-allowed;
+              opacity: 0.45;
             }
           }
         }
@@ -334,6 +375,42 @@ function reset() {
         padding: 0.75rem 0.85rem;
         font-weight: 900;
         line-height: 1.35;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+
+        .result__message {
+          line-height: 1.4;
+        }
+
+        .result__actions {
+          display: flex;
+          gap: 0.5rem;
+
+          .result__btn {
+            flex: 1;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            background-color: rgba(255, 255, 255, 0.55);
+            color: rgba(0, 0, 0, 0.75);
+            font-weight: 900;
+            cursor: pointer;
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.8);
+            }
+
+            &.result__btn--next {
+              background-color: rgba(145, 215, 93, 0.85);
+              border-color: rgba(0, 0, 0, 0.18);
+
+              &:hover {
+                background-color: rgba(145, 215, 93, 1);
+              }
+            }
+          }
+        }
 
         &.is-success {
           background-color: rgba(16, 185, 129, 0.12);
